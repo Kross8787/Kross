@@ -1,0 +1,143 @@
+```html
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>座位抽籤系統 (張辰彥專屬版)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 背景設定：將照片作為全螢幕背景 */
+        body {
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            background-image: url('1000073165.jpg');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: sans-serif;
+        }
+
+        /* 毛玻璃容器效果，確保 UI 美觀且不影響閱讀 */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 16px;
+            padding: 24px;
+            width: 90%;
+            max-width: 800px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        .grid-container { display: grid; gap: 8px; padding: 16px; background: rgba(255, 255, 255, 0.4); border-radius: 12px; margin-top: 16px; }
+        .cell { position: relative; height: 60px; display: flex; align-items: center; justify-content: center; }
+        .seat { width: 100%; height: 100%; background: #3b82f6; color: white; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: bold; position: relative; animation: pop 0.3s ease-out; }
+        .empty-cell { width: 100%; height: 100%; background: rgba(255, 255, 255, 0.6); border: 2px dashed #9ca3af; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #4b5563; font-weight: bold; }
+        .delete-btn { position: absolute; top: -8px; right: -8px; background: #ef4444; color: white; border-radius: 50%; width: 20px; height: 20px; font-size: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0; transition: opacity 0.2s; }
+        .cell:hover .delete-btn { opacity: 1; }
+        .add-btn { position: absolute; top: -8px; left: -8px; background: #10b981; color: white; border-radius: 50%; width: 20px; height: 20px; font-size: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0; transition: opacity 0.2s; }
+        .cell:hover .add-btn { opacity: 1; }
+        
+        .watermark { position: fixed; bottom: 20px; right: 20px; color: white; font-weight: bold; font-size: 2rem; opacity: 0.5; pointer-events: none; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
+        @keyframes pop { 0% { transform: scale(0.8); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+    </style>
+</head>
+<body>
+
+    <div class="glass-panel">
+        <h1 class="text-2xl font-bold mb-6 text-center text-gray-800">彈性座位抽籤系統</h1>
+        
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div>
+                <label class="block text-sm font-bold text-gray-700">總人數</label>
+                <input type="number" id="totalCount" value="20" class="border p-2 rounded w-full bg-white/50">
+            </div>
+            <div>
+                <label class="block text-sm font-bold text-gray-700">行數</label>
+                <input type="number" id="rows" value="4" class="border p-2 rounded w-full bg-white/50">
+            </div>
+            <div>
+                <label class="block text-sm font-bold text-gray-700">列數</label>
+                <input type="number" id="cols" value="5" class="border p-2 rounded w-full bg-white/50">
+            </div>
+            <div class="flex items-end">
+                <button onclick="initGrid()" class="bg-gray-800 text-white w-full py-2 rounded hover:bg-gray-900 transition">重置畫布</button>
+            </div>
+        </div>
+
+        <div class="flex justify-center mb-6">
+            <button id="drawBtn" onclick="drawNext()" class="bg-blue-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-blue-700 shadow-lg transition">抽取下一位 (隨機)</button>
+        </div>
+
+        <div id="gridContainer" class="grid-container"></div>
+    </div>
+
+    <div class="watermark">Kross</div>
+
+    <script>
+        let remainingStudents = [];
+
+        function initGrid() {
+            const rows = parseInt(document.getElementById('rows').value);
+            const cols = parseInt(document.getElementById('cols').value);
+            const total = parseInt(document.getElementById('totalCount').value);
+            const container = document.getElementById('gridContainer');
+            
+            remainingStudents = Array.from({length: total}, (_, i) => i + 1);
+            container.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
+            container.innerHTML = '';
+
+            for (let i = 0; i < rows * cols; i++) {
+                container.appendChild(createCell());
+            }
+        }
+
+        function createCell() {
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            cell.innerHTML = `
+                <div class="empty-cell">空</div>
+                <div class="add-btn" onclick="restoreCell(this)">+</div>
+                <div class="delete-btn" onclick="removeCell(this)">×</div>
+            `;
+            return cell;
+        }
+
+        function removeCell(btn) {
+            const cell = btn.parentElement;
+            cell.innerHTML = `<div class="add-btn" style="opacity:1" onclick="restoreCell(this)">+</div>`;
+        }
+
+        function restoreCell(btn) {
+            const cell = btn.parentElement;
+            cell.innerHTML = `
+                <div class="empty-cell">空</div>
+                <div class="add-btn" onclick="restoreCell(this)">+</div>
+                <div class="delete-btn" onclick="removeCell(this)">×</div>
+            `;
+        }
+
+        function drawNext() {
+            const emptyCells = Array.from(document.querySelectorAll('.empty-cell')).map(c => c.parentElement);
+            if (remainingStudents.length === 0) { alert("所有號碼皆已抽完！"); return; }
+            if (emptyCells.length === 0) { alert("沒有空的座位格！"); return; }
+
+            const randomCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+            const randIndex = Math.floor(Math.random() * remainingStudents.length);
+            const student = remainingStudents.splice(randIndex, 1)[0];
+            
+            randomCell.innerHTML = `<div class="seat">${student}</div><div class="delete-btn" onclick="removeCell(this)">×</div><div class="add-btn" onclick="restoreCell(this)">+</div>`;
+        }
+
+        initGrid();
+    </script>
+</body>
+</html>
+
+```
